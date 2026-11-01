@@ -1,10 +1,10 @@
-# SpendWise AI
+# SpendWise
 
-### AI-Powered SaaS Spend Intelligence & License Optimization Platform
+### SaaS Spend Intelligence & License Optimization Platform
 
 > Stop paying for software nobody uses.
 
-SpendWise AI is an intelligent SaaS spend management platform that helps organizations discover software subscriptions, identify unused licenses, detect redundant applications, monitor upcoming renewals, and optimize recurring software expenditure.
+SpendWise is a SaaS spend management platform that helps organizations discover software subscriptions, identify unused licenses, review category overlap, monitor upcoming renewals, and optimize recurring software expenditure.
 
 It provides businesses with centralized visibility into their SaaS ecosystem and actionable recommendations to eliminate unnecessary spending without disrupting employee productivity.
 
@@ -21,7 +21,7 @@ It provides businesses with centralized visibility into their SaaS ecosystem and
 7. [System Architecture](#system-architecture)
 8. [Technology Stack](#technology-stack)
 9. [Application Modules](#application-modules)
-10. [AI Intelligence Engine](#ai-intelligence-engine)
+10. [Mathematical Recommendation Engine](#mathematical-recommendation-engine)
 11. [Database Design](#database-design)
 12. [Data Import and CSV Format](#data-import-and-csv-format)
 13. [API Design](#api-design)
@@ -49,7 +49,7 @@ Different departments independently purchase subscriptions, employees retain lic
 
 Most organizations lack a centralized system that connects software expenditure with actual application utilization.
 
-SpendWise AI addresses this problem.
+SpendWise addresses this problem.
 
 It analyzes software expenditure and license utilization data to identify unnecessary spending and provide intelligent cost optimization recommendations.
 
@@ -60,13 +60,13 @@ It analyzes software expenditure and license utilization data to identify unnece
 - SaaS expenditure analytics.
 - Duplicate and overlapping application detection.
 - Upcoming subscription renewal monitoring.
-- AI-generated cost optimization recommendations.
+- Deterministic cost optimization recommendations.
 - Potential and realized savings tracking.
 - Downloadable financial reports.
 
 ### Core value proposition
 
-**SpendWise AI transforms fragmented SaaS expenditure into actionable financial intelligence.**
+**SpendWise transforms fragmented SaaS expenditure into actionable financial intelligence.**
 
 ---
 
@@ -116,13 +116,13 @@ This makes it difficult to understand:
 
 Most organizations identify unnecessary subscriptions only after reviewing financial statements or conducting periodic audits.
 
-SpendWise AI aims to make optimization continuous rather than reactive.
+SpendWise aims to make optimization continuous rather than reactive.
 
 ---
 
 # 3. Our Solution
 
-SpendWise AI provides a centralized intelligence layer that connects subscription expenditure, license utilization, and application information.
+SpendWise provides a centralized analysis layer that connects subscription expenditure, license utilization, and application information.
 
 The platform follows six major stages:
 
@@ -150,7 +150,7 @@ Help organizations make smarter software purchasing decisions, eliminate unneces
 ### Product principles
 
 - Data-driven decisions over assumptions.
-- Explainable AI recommendations.
+- Explainable mathematical recommendations.
 - Financial transparency.
 - Human approval before destructive actions.
 - Security-first architecture.
@@ -269,9 +269,9 @@ Detection can use:
 
 Applications should be flagged as potentially redundant, not automatically classified as unnecessary.
 
-## 5.5 AI Recommendations
+## 5.5 Mathematical Recommendations
 
-An intelligent recommendation engine analyzes organizational spending and generates actionable suggestions.
+An explainable mathematical recommendation engine analyzes recorded spend, seats, activity dates, and renewal dates.
 
 Example recommendations:
 
@@ -360,8 +360,8 @@ The primary workflow:
       +-----+------+
             |
             v
-     AI INTELLIGENCE
-          ENGINE
+   RULE-BASED MATH
+       ENGINE
             |
             v
     RECOMMENDATIONS
@@ -390,7 +390,7 @@ This distinction is essential for trustworthy financial reporting.
 
 # 7. System Architecture
 
-SpendWise AI will initially follow a modular client-server architecture.
+SpendWise will initially follow a modular client-server architecture.
 
 ```text
              REACT FRONTEND
@@ -401,7 +401,7 @@ SpendWise AI will initially follow a modular client-server architecture.
        +------------+------------+
        |            |            |
        v            v            v
-  SUBSCRIPTION   ANALYTICS     AI SERVICE
+  SUBSCRIPTION   ANALYTICS     RULE ENGINE
     SERVICE       ENGINE
        |            |            |
        +------------+------------+
@@ -432,7 +432,7 @@ SpendWise AI will initially follow a modular client-server architecture.
 - Analytics calculations.
 - Inactive license detection.
 - Duplicate application analysis.
-- AI recommendation generation.
+- Deterministic recommendation generation.
 - Report generation.
 
 ### Database responsibilities
@@ -444,14 +444,13 @@ SpendWise AI will initially follow a modular client-server architecture.
 - Recommendations.
 - Optimization history.
 
-### AI service responsibilities
+### Recommendation engine responsibilities
 
-- Analyze detected inefficiencies.
-- Generate contextual explanations.
-- Suggest optimization strategies.
-- Prioritize recommendations.
-
-The AI service should not be responsible for authoritative financial calculations. Those should be performed deterministically by the backend.
+- Apply configured inactivity thresholds.
+- Estimate eligible savings from recorded subscription and license costs.
+- Identify upcoming renewal reviews.
+- Flag subscriptions in shared categories for human review.
+- Prioritize recommendations using explicit threshold rules.
 
 ---
 
@@ -479,7 +478,7 @@ The AI service should not be responsible for authoritative financial calculation
 | Express.js | REST API |
 | Supabase | PostgreSQL database and authentication |
 | Prisma (optional) | Database ORM |
-| Gemini API / OpenAI API | AI recommendations |
+| Node.js recommendation engine | Deterministic recommendations |
 
 ## Deployment
 
@@ -540,7 +539,7 @@ Displays:
 
 Route: `/recommendations`
 
-Displays AI-generated recommendations.
+Displays rule-generated recommendations.
 
 Each recommendation includes:
 
@@ -580,119 +579,29 @@ Includes:
 
 ---
 
-# 10. AI Intelligence Engine
+# 10. Mathematical Recommendation Engine
 
-AI is one of the platform's differentiating components.
+The backend generates recommendations locally from validated workspace data. It makes no calls to an external model or recommendation provider.
 
-However, financial calculations and detection rules should remain deterministic.
+## 10.1 Inactive license reviews
 
-## 10.1 Inactive License Detection
+For each assigned, unreclaimed, non-excluded license with a valid activity date, calculate whole days since last activity. A license becomes a review candidate only when inactivity exceeds the workspace's `potentialDays` threshold. It receives High priority when inactivity also exceeds `highPriorityDays`; otherwise it is Medium priority. Missing, invalid, and future dates are not treated as inactivity.
 
-Calculate the number of inactive assigned licenses:
+Potential monthly savings use the license's recorded monthly cost. If that is missing, the engine prorates the subscription's monthly cost by purchased seats. Savings are capped at the subscription's recorded monthly cost. These are estimates only: the app never reclaims a license or assumes that a vendor will reduce a contract.
 
-```javascript
-function detectInactiveLicenses(licenses, threshold = 90) {
-  const now = new Date();
+## 10.2 Unassigned seat reviews
 
-  return licenses.filter((license) => {
-    if (!license.assigned) return false;
-    if (!license.lastActive) return false;
+For each subscription, calculate `max(totalSeats - assignedSeats, 0)`. Estimated cost is `monthlyCost * unassignedSeats / totalSeats`, capped by the remaining subscription spend after inactive-license estimates. Contract minimums may make actual savings lower or zero.
 
-    const lastActive = new Date(license.lastActive);
+## 10.3 Renewal reviews
 
-    if (Number.isNaN(lastActive.getTime())) return false;
+Active subscriptions with a valid renewal date in the next 30 days are flagged. Renewals due within 7 days are High priority; other upcoming renewals are Medium priority. The recommendation has no estimated savings unless separate eligible license or seat rules calculate them.
 
-    const inactiveDays = Math.floor(
-      (now - lastActive) / (1000 * 60 * 60 * 24)
-    );
+## 10.4 Category-overlap reviews
 
-    return inactiveDays >= threshold;
-  });
-}
-```
+Two or more active subscriptions with the same non-generic category receive a review prompt. This is a category match, not proof that products overlap; it always has zero estimated savings and asks administrators to compare actual workflows and contract terms.
 
-## 10.2 Potential Savings Calculation
-
-For eligible unused licenses:
-
-```javascript
-function calculatePotentialSavings(licenses) {
-  return licenses.reduce((total, license) => {
-    return total + (
-      license.reclaimable
-        ? Number(license.monthlyCost || 0)
-        : 0
-    );
-  }, 0);
-}
-```
-
-Only count licenses marked as eligible after review.
-
-The actual savings may depend on contract terms, billing commitments, and whether the vendor permits seat reductions.
-
-## 10.3 Duplicate Application Detection
-
-Use a category-based first-pass algorithm:
-
-```javascript
-function detectPotentialDuplicates(applications) {
-  const categories = {};
-
-  applications.forEach((app) => {
-    if (!categories[app.category]) {
-      categories[app.category] = [];
-    }
-
-    categories[app.category].push(app);
-  });
-
-  return Object.entries(categories)
-    .filter(([, apps]) => apps.length > 1)
-    .map(([category, apps]) => ({
-      category,
-      applications: apps
-    }));
-}
-```
-
-This detects category overlap, not confirmed duplication.
-
-A more advanced version can use semantic similarity between application descriptions.
-
-## 10.4 AI Recommendation Generation
-
-The AI model should receive structured analysis results rather than raw financial records whenever possible.
-
-Example input:
-
-```json
-{
-  "application": "Slack",
-  "totalSeats": 100,
-  "inactiveSeats": 20,
-  "monthlyCostPerSeat": 8,
-  "inactiveThreshold": 90,
-  "potentialMonthlySavings": 160
-}
-```
-
-Expected response:
-
-```json
-{
-  "priority": "high",
-  "title": "Review inactive Slack licenses",
-  "finding": "20 assigned licenses have been inactive for over 90 days.",
-  "recommendation": "Review the accounts with department owners and reclaim eligible licenses.",
-  "estimatedMonthlySavings": 160,
-  "estimatedAnnualSavings": 1920
-}
-```
-
-AI output must be validated before being saved or displayed.
-
-The model must never invent financial figures or claim that an optimization has been completed when it has only been recommended.
+All rules are deterministic and tested against fixed dates and known costs. Review and approval by an authorized administrator are required before taking action.
 
 ---
 
@@ -806,6 +715,32 @@ Figma,user3@example.com,Design,Professional,true,2026-06-10,12
 Zoom,user4@example.com,Sales,Pro,true,2026-08-01,15
 ```
 
+### C. Usage activity CSV (recurring sync)
+
+Use an authorized SaaS or identity-provider activity/audit export. In **License utilization**, an organization admin can choose **Sync usage CSV** to update activity for existing licenses:
+
+```csv
+app_name,employee_email,last_active
+Slack,user1@example.com,2026-10-25
+Figma,user3@example.com,2026-10-28
+```
+
+Rows match an existing license by application and employee email. Only the latest activity date is retained; older exports never replace newer dates. Unknown licenses are rejected during preview. Do not collect or upload employee passwords, authentication tokens, keystrokes, screen contents, or raw event histories. Use provider exports with appropriate employee notice and access authorization. Native read-only provider integrations can be added later without giving SpendWise employee credentials.
+
+### Automatic Windows usage agent
+
+The Windows agent runs in the signed-in employee session, samples the foreground process name every five seconds, ignores periods after one minute of inactivity, and uploads daily app totals every minute over HTTPS. It does not collect window titles, browser page contents, passwords, keystrokes, screenshots, or document/message contents. Employees must be informed before installation; installation requires an explicit acknowledgment of the organization’s notice. The agent does not elevate privileges and stays visible while running. Browser process usage (for example `chrome.exe`) cannot distinguish individual websites.
+
+Admins enroll only employees who already have a license record. In **Settings → Employee usage agent**, create a one-time enrollment code for the employee and device, then provide the code and API URL to the employee or IT installer. The employee runs `SpendWiseAgent.exe --install`; the agent redeems the code once, stores its device token protected for that Windows account, and starts at future user sign-ins. An admin can view recent usage, map detected executable names to subscriptions, and revoke devices. Mapped foreground use of at least one minute updates that employee’s license last-used date, which is then available to workspace analysis. Usage is stored as per-device, per-app daily totals for up to 90 days; monitoring data and identifiable reports are admin-only.
+
+The Windows x64 agent is published as a GitHub Release asset. After pushing a tag that starts with `windows-agent-v`, the workflow at [`.github/workflows/release-windows-agent.yml`](./.github/workflows/release-windows-agent.yml) builds and publishes `SpendWiseAgent.exe`. For a local build with Go 1.24 or newer:
+
+```bash
+sh windows-agent/build-windows.sh
+```
+
+On Windows PowerShell, run `.\windows-agent\build-windows.ps1`. Local scripts place the generated executable in `frontend/public/`; the deployment workflow publishes the binary to the repository's GitHub Releases, and the admin settings page downloads the latest release. The generated executable is ignored by Git. The installer copies itself to the employee's per-user Programs folder and starts visibly at login. To stop it, close its visible console; to remove its startup entry and local credential, run `SpendWiseAgent.exe --uninstall`, then remove the installed binary after the agent exits. Admins should also revoke the device in SpendWise.
+
 ### Import requirements
 
 - Validate file type.
@@ -832,6 +767,14 @@ Base URL:
 /api/v1
 ```
 
+## Workspace
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/workspace` | Get the authenticated user's organization and profile |
+| PATCH | `/workspace` | Update organization profile settings (admin only) |
+| DELETE | `/workspace/data` | Clear organization subscriptions, licenses, and recommendations (admin only) |
+
 ## Dashboard
 
 | Method | Endpoint | Description |
@@ -857,13 +800,21 @@ Base URL:
 | GET | `/licenses` | Get all licenses |
 | GET | `/licenses/inactive` | Find inactive licenses |
 | GET | `/licenses/:id` | Get license details |
+| PATCH | `/licenses/:id` | Update license assignment and review state |
+| POST | `/monitoring/enrollments` | Admin creates a one-time employee/device enrollment code |
+| POST | `/monitoring/enroll` | Redeem a one-time code and receive a device credential |
+| POST | `/monitoring/activity` | Ingest authenticated, minimized app-usage totals |
+| GET | `/monitoring/overview` | Admin-only device and usage summary |
+| PUT | `/monitoring/app-mappings` | Admin maps an observed executable to a subscription |
+| DELETE | `/monitoring/devices/:id` | Admin revokes a monitoring device |
 
 ## Recommendations
 
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/recommendations` | Get recommendations |
-| POST | `/recommendations/generate` | Generate recommendations |
+| POST | `/recommendations` | Save generated recommendations |
+| POST | `/recommendations/analyze` | Calculate and save deterministic review recommendations |
 | PATCH | `/recommendations/:id` | Update recommendation status |
 
 ## Import
@@ -872,6 +823,7 @@ Base URL:
 |---|---|---|
 | POST | `/import/subscriptions` | Import subscriptions |
 | POST | `/import/licenses` | Import license records |
+| POST | `/usage/activity/import` | Admin-only sync of latest activity dates for existing licenses |
 
 ## Reports
 
@@ -886,7 +838,7 @@ All endpoints should validate input, enforce organization authorization, and ret
 
 # 14. User Interface and Experience
 
-SpendWise AI should have a modern, professional enterprise SaaS interface.
+SpendWise should have a modern, professional enterprise SaaS interface.
 
 ### Design direction
 
@@ -901,7 +853,7 @@ SpendWise AI should have a modern, professional enterprise SaaS interface.
 ### Suggested sidebar navigation
 
 ```text
-SPENDWISE AI
+SPENDWISE
 
 Overview
 Dashboard
@@ -934,7 +886,7 @@ Use consistent chart formatting, tooltips, responsive containers, and meaningful
 
 # 15. Security and Privacy
 
-SpendWise AI may process sensitive organizational information.
+SpendWise may process sensitive organizational information.
 
 Security must be part of the architecture from the beginning.
 
@@ -950,10 +902,6 @@ Requirements:
 - Audit logs for administrative actions.
 - Minimal collection of employee information.
 - Secure file upload handling.
-
-Never expose AI provider API keys in frontend code.
-
-Never send unnecessary employee information to AI providers.
 
 Never revoke employee access without an authorized administrative approval workflow.
 
@@ -1027,87 +975,91 @@ spendwise-ai/
 
 # 17. Installation and Setup
 
-## Prerequisites
+The frontend supports an illustrative browser-local demo when Supabase frontend settings are omitted, and authenticated persistent workspaces when they are configured.
 
-Install the following:
-
-- Node.js 20 or later.
-- npm.
-- Git.
-- Supabase account (for database integration).
-- AI API key (for AI-powered recommendations).
-
-## Step 1: Clone the repository
+## Frontend
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
-cd spendwise-ai
-```
-
-## Step 2: Initialize the frontend
-
-```bash
-cd client
+cd frontend
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-## Step 3: Initialize the backend
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `frontend/.env.local` using the Supabase project URL and publishable/anon key. Set `VITE_API_BASE_URL` to the backend API URL (locally, `http://localhost:3001/api/v1`). Restart Vite after changing environment variables. Open the URL Vite prints (normally `http://localhost:5173`) and create an account or sign in. New accounts can confirm their email if required by Supabase, then create an organization; its creator becomes its admin.
 
-Open another terminal:
+If both Supabase frontend variables are blank, the app runs in its browser-local demo mode. Do not put a Supabase service-role key in any `VITE_` variable.
+
+## Backend API
+
+In another terminal:
 
 ```bash
-cd server
+cd backend
 npm install
+cp .env.example .env
 npm run dev
 ```
 
-## Step 4: Configure the database
+The API listens on port `3001` by default. `GET /api/v1/health` works without credentials; persistent organization endpoints return `503` until Supabase is configured.
 
-Create a Supabase project and configure the PostgreSQL connection.
+## Supabase
 
-Run the database migrations before using persistent storage.
+1. Create a Supabase project and enable Supabase Auth.
+2. Enable email sign-ups in Supabase Auth. Set the local Site URL to `http://localhost:5173` and add it to the allowed redirect URLs; configure the production domain there before deployment.
+3. Apply all SQL files in `backend/supabase/migrations/` in filename order, including [`20261031000000_initial_schema.sql`](./backend/supabase/migrations/20261031000000_initial_schema.sql), [`20261031000001_workspace_profile_updates.sql`](./backend/supabase/migrations/20261031000001_workspace_profile_updates.sql), [`20261031000002_self_service_onboarding.sql`](./backend/supabase/migrations/20261031000002_self_service_onboarding.sql), [`20261031000003_usage_activity_import.sql`](./backend/supabase/migrations/20261031000003_usage_activity_import.sql), [`20261031000004_monitoring_agent.sql`](./backend/supabase/migrations/20261031000004_monitoring_agent.sql), and [`20261101000005_secure_monitoring_retention.sql`](./backend/supabase/migrations/20261101000005_secure_monitoring_retention.sql), in the Supabase SQL editor or with the Supabase CLI. If earlier migrations were already applied, apply only the newer migration.
+4. New users create their own isolated organization during onboarding. Existing users still need a matching organization membership in `public.users`. The migrations enable organization-scoped row-level security.
+5. Configure backend environment variables below. Do not add a service-role key to the frontend.
 
-## Step 5: Configure environment variables
+The frontend authenticates with Supabase Auth and sends the user's access token to the API. A restricted database function provisions an organization only for the authenticated user who is not already a member; it assigns that user the admin role. The API uses the anon key and row-level security for organization-scoped persistence. Inactivity thresholds and notification preferences remain browser-local, scoped to the signed-in user.
 
-Create environment files using the examples below.
+## Production deployment on Vercel
 
-## Step 6: Open the application
+Deploy the frontend and API as **two Vercel projects** from the same GitHub repository:
 
-```text
-http://localhost:5173
-```
+1. Push the code to GitHub. Create the frontend Vercel project with **Root Directory** set to the repository root. The root [`vercel.json`](./vercel.json) installs frontend dependencies, builds `frontend/`, adds security headers, and routes client-side pages to `index.html`.
+2. Create the backend Vercel project from the same repository with **Root Directory** set to `backend`; Vercel detects the Express app exported from `src/server.js`. Use Node.js 24.x. Note each project's HTTPS domain.
+3. Add these backend environment variables for Production: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CORS_ORIGIN`, and `CRON_SECRET`. Set `CORS_ORIGIN` to the exact frontend origin, without a trailing slash. Never put the service-role key in the frontend.
+4. Add the frontend Production environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_API_BASE_URL=https://<backend-domain>/api/v1`.
+5. In Supabase Auth URL configuration, set the production frontend domain as the Site URL and add production frontend callback URLs to the redirect allow-list.
+6. Deploy both projects, then redeploy the frontend after its API URL and the backend's CORS origin are configured.
+7. Publish the Windows agent once by pushing a tag such as `windows-agent-v1.0.0`. The GitHub Actions workflow builds and attaches `SpendWiseAgent.exe` to a release; the Settings download link serves the latest release.
+8. Verify the backend health endpoint, sign-up/sign-in and email confirmation, organization isolation, imports, deterministic recommendation generation, enrollment and upload from a Windows device, agent revocation, and the protected daily cleanup Cron Job before inviting employees.
 
-Note: These commands describe the intended project setup. The backend, database migrations, and individual scripts must be implemented before the complete application can run.
+The backend's [`vercel.json`](./backend/vercel.json) schedules retention cleanup once daily. Set `CRON_SECRET` in the backend Vercel project; Vercel sends it as a bearer token. The cleanup RPC requires the server-only Supabase service-role key and the latest database migration. Do not manually expose the cleanup RPC to anonymous or authenticated client roles.
+
+For pull-request previews, use a separate Supabase staging project or keep Preview deployments disconnected from production data. Configure matching CORS origins, Supabase redirect URLs, and backend API URLs for each environment.
+
+## CSV templates
+
+Subscription and license sample files are in [`frontend/public/subscriptions-template.csv`](./frontend/public/subscriptions-template.csv) and [`frontend/public/licenses-template.csv`](./frontend/public/licenses-template.csv). Import in **Subscriptions** or **License utilization**.
 
 ---
 
 # 18. Environment Variables
 
-### Frontend `.env`
-
-```env
-VITE_API_URL=http://localhost:5000/api/v1
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-```
-
-Only public Supabase client configuration belongs in frontend environment variables. Enforce database access through appropriate security policies.
-
 ### Backend `.env`
 
 ```env
-PORT=5000
-NODE_ENV=development
-
-DATABASE_URL=
-
-GEMINI_API_KEY=
-OPENAI_API_KEY=
-
+PORT=3001
+NODE_ENV=production
+CORS_ORIGIN=https://<frontend-domain>
 SUPABASE_URL=
+SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+CRON_SECRET=
 ```
+
+The API uses `SUPABASE_ANON_KEY` with the signed-in user's access token and row-level security for normal requests. `SUPABASE_SERVICE_ROLE_KEY` is used only by the protected scheduled retention-cleanup function; never expose it to Vite or a browser. `CRON_SECRET` protects that scheduled endpoint. Set `CORS_ORIGIN` to the exact frontend origin (or comma-separated origins) in each environment. Recommendations are calculated from workspace data without an external provider.
+
+## MVP checks
+
+```bash
+cd frontend && npm run lint && npm test && npm run build
+cd ../backend && npm run lint && npm test
+```
+
+The interactive demo, CSV imports, subscription/license workflows, analytics, recommendation approval, verified-savings tracking, and CSV reports are available in demo and authenticated workspace modes. In authenticated mode, business records persist in Supabase; thresholds and notification preferences remain browser-local.
 
 Never commit environment files or expose privileged credentials.
 
@@ -1126,7 +1078,7 @@ Goal: Demonstrate the complete SaaS cost optimization workflow.
 | CSV import | P0 |
 | Inactive license detection | P0 |
 | Potential savings calculator | P0 |
-| AI recommendations | P1 |
+| Mathematical recommendations | P1 |
 | Duplicate application detection | P1 |
 | Renewal alerts | P1 |
 | Reports | P1 |
@@ -1216,7 +1168,7 @@ Help organizations compare software alternatives and consolidate vendors.
 
 # 21. Success Metrics
 
-SpendWise AI should measure business outcomes, not just application activity.
+SpendWise should measure business outcomes, not just application activity.
 
 | KPI | Measurement |
 |---|---|
@@ -1264,7 +1216,7 @@ Suggested contribution areas:
 
 - Frontend development.
 - Backend development.
-- AI recommendation algorithms.
+- Recommendation rule improvements.
 - SaaS provider integrations.
 - Security improvements.
 - Documentation.
@@ -1302,10 +1254,10 @@ Add a `LICENSE` file containing the appropriate MIT License text before publishi
 
 # Final Vision
 
-SpendWise AI is not simply another subscription tracking dashboard.
+SpendWise is not simply another subscription tracking dashboard.
 
 It is designed to become an intelligent SaaS financial operations platform that helps organizations understand where their software budgets go, identify inefficiencies, make informed purchasing decisions, and continuously optimize recurring expenditure.
 
 **Discover waste. Understand spending. Optimize intelligently.**
 
-**SpendWise AI — Every subscription should earn its place.**
+**SpendWise — Every subscription should earn its place.**

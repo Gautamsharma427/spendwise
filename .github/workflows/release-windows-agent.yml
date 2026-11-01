@@ -1,0 +1,32 @@
+name: Release Windows usage agent
+
+on:
+  push:
+    tags:
+      - "windows-agent-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: windows-agent/go.mod
+      - name: Check and build Windows agent
+        working-directory: windows-agent
+        run: |
+          test -z "$(gofmt -l main_windows.go)"
+          GOOS=windows GOARCH=amd64 go vet ./...
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags="-s -w" \
+            -o "$RUNNER_TEMP/SpendWiseAgent.exe" .
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/SpendWiseAgent.exe" \
+            --title "SpendWise Usage Agent $GITHUB_REF_NAME" \
+            --notes "Windows x64 foreground-application usage agent. Review the employee notice and installation guide before deployment."

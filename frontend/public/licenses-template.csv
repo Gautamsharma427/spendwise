@@ -1,0 +1,2 @@
+app_name,employee_email,department,license_type,assigned,last_active,monthly_cost
+Example App,person@example.com,Engineering,Standard,true,2026-08-01,60
